@@ -7,7 +7,7 @@ use warnings qw/all/;
 use Env;
 use CGI::Fast;
 use JSON::XS;
-use Template::Mustache;
+use Mustache::Simple;
 
 use Path::Tiny qw/path/;
 use Config::Tiny;
@@ -19,14 +19,15 @@ use Scalar::Util;
 # ----------------------------------------------------------------------
 my $base = path( $0 )->parent();
 my $config = ( $base->child('index.ini')->exists() )
-				? Config::Tiny->new( $base->child('index.ini')->stringify ): {};
+				? Config::Tiny->read( $base->child('index.ini')->stringify, 'utf8' ): {};
 
+my @partials = ( $config->{'general'}->{'partials'} ) ? split /\//, $config->{'general'}->{'partials'} : ('partials');
 # ----------------------------------------------------------------------
 # | Fast::CGI Response Loop                                            |
 # ----------------------------------------------------------------------
 while (my $q = CGI::Fast->new() )
 {
-	#print $q->header( -status => 200, -charset => 'UTF-8' );
+	print $q->header( -status => 200, -charset => 'UTF-8' ) if ( $config->{'general'}->{'debug'} );
 
 	my ( $route, @filters ) = route( $q );
 
@@ -38,14 +39,13 @@ while (my $q = CGI::Fast->new() )
 
 	my $data = model( $q, $route, @filters );
 
-	my $view = Template::Mustache->new(
-    	template_path   => $route->child('view.mustache')->stringify,
-    	partials_path	=> $base->child('partials')->stringify
+	my $view = Mustache::Simple->new(
+    	path   => [ $route->stringify, $base->child( @partials )->stringify ]
 	);
 	# TODO:
 	# add cookie into this mix
 	print $q->header( -status => 200, -charset => 'UTF-8' );
-	print $view->render( $data );
+	print $view->render( "view.mustache", $data );
 }
 
 
