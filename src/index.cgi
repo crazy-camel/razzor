@@ -42,12 +42,13 @@ while (my $q = CGI::Fast->new() )
 	my $data = model( $q, $route, @filters );
 
 	my $view = Mustache::Simple->new(
+		extension => 'razur',
     	path   => [ $route->stringify, $base->child( @partials )->stringify ]
 	);
 	# TODO:
 	# add cookie into this mix
 	print $q->header( -status => 200, -charset => 'UTF-8' );
-	print $view->render( "view.mustache", $data );
+	print $view->render( "view.razur", $data );
 }
 
 
@@ -59,8 +60,10 @@ sub route
 {
 	my ( $query ) = @_;
 
+	my @uri = split( /\?/, $query->request_uri )  ;
+
 	# lets get the path and try to resolve it
-	my $path = ( length( $query->request_uri ) > 1 ) ? $query->request_uri : '/welcome';
+	my $path = ( length( $uri[0] ) > 1 ) ? $uri[0]: '/welcome';
 	
 	my @fragments = grep { $_ ne '' } split /\//, $path;
 
@@ -70,7 +73,7 @@ sub route
 	{
     	my @path = @fragments[0..$i];
 
-    	if ( $base->child( @path, "view.mustache" )->exists() )
+    	if ( $base->child( @path, "view.razur" )->exists() )
 		{
 			@resource = @path;
 			last;
