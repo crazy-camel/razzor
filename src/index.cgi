@@ -1,12 +1,14 @@
 #!/usr/bin/perl
 
-use utf8;
-use strict;
-use warnings qw/all/;
-
 use Env;
+use FindBin;
+use File::Spec;
+use lib File::Spec->catdir($FindBin::Bin, '..', 'framework');
+
+use common::sense;
+
 use CGI::Fast;
-use JSON::XS;
+use JSON;
 use Mustache::Simple;
 
 use Path::Tiny qw/path/;
