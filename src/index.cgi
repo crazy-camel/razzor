@@ -1,17 +1,16 @@
 #!/usr/bin/perl
 
+use utf8;
+use strict;
+use warnings qw/all/;
+
 use Env;
-use FindBin;
-use File::Spec;
-use lib File::Spec->catdir($FindBin::Bin, '..', 'framework');
-
-use common::sense;
-
 use CGI::Fast;
-use JSON;
+use JSON::XS;
 use Mustache::Simple;
 
 use Path::Tiny qw/path/;
+use Data::Dump qw/dump/;
 use Config::Tiny;
 use Data::Dump;
 use Scalar::Util;
@@ -20,10 +19,12 @@ use Scalar::Util;
 # | Initialization                                                     |
 # ----------------------------------------------------------------------
 my $base = path( $0 )->parent();
+
 my $config = ( $base->child('index.ini')->exists() )
 				? Config::Tiny->read( $base->child('index.ini')->stringify, 'utf8' ): {};
+my $extension = ( $config->{'template'}->{'extension'}  ) ? $config->{'template'}->{'extension'} : 'html';
 
-my @partials = ( $config->{'general'}->{'partials'} ) ? split /\//, $config->{'general'}->{'partials'} : ('partials');
+my @partials = ( $config->{'general'}->{'partials'} ) ? split /\//, $config->{'general'}->{'partials'} : ('.partials');
 # ----------------------------------------------------------------------
 # | Fast::CGI Response Loop                                            |
 # ----------------------------------------------------------------------
@@ -42,13 +43,14 @@ while (my $q = CGI::Fast->new() )
 	my $data = model( $q, $route, @filters );
 
 	my $view = Mustache::Simple->new(
-		extension => 'razur',
+		extension => ( $config->{'template'}->{'extension'}  ) ? $config->{'template'}->{'extension'} : 'html',
     	path   => [ $route->stringify, $base->child( @partials )->stringify ]
 	);
+
 	# TODO:
 	# add cookie into this mix
 	print $q->header( -status => 200, -charset => 'UTF-8' );
-	print $view->render( "view.razur", $data );
+	print $view->render( "view.$extension", $data );
 }
 
 
@@ -60,10 +62,8 @@ sub route
 {
 	my ( $query ) = @_;
 
-	my @uri = split( /\?/, $query->request_uri )  ;
-
 	# lets get the path and try to resolve it
-	my $path = ( length( $uri[0] ) > 1 ) ? $uri[0]: '/welcome';
+	my $path = ( length( $query->request_uri ) > 1 ) ? $query->request_uri : '/welcome';
 	
 	my @fragments = grep { $_ ne '' } split /\//, $path;
 
@@ -73,7 +73,7 @@ sub route
 	{
     	my @path = @fragments[0..$i];
 
-    	if ( $base->child( @path, "view.razur" )->exists() )
+    	if ( $base->child( @path, "view.$extension" )->exists() )
 		{
 			@resource = @path;
 			last;
